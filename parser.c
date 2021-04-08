@@ -4,133 +4,50 @@
 
 #include "lexer.h"
 #include "parser.h"
-char *resWords[21];
-char symbols[20];
 
 // you can declare prototypes of parser functions below
 
 
 
-void setUpResWords(){
-    for(int i=0; i<21; i++){
-        resWords[i]=calloc(16,sizeof(char*));
-    }
-    //Program components
-    strcpy(resWords[0],"class");
-    strcpy(resWords[1],"constructor");
-    strcpy(resWords[2],"method");
-    strcpy(resWords[3],"function");
-
-    //Primitive types
-    strcpy(resWords[4],"int");
-    strcpy(resWords[5],"boolean");
-    strcpy(resWords[6],"char");
-    strcpy(resWords[7],"void");
-
-    //Variable declarations
-    strcpy(resWords[8],"var");
-    strcpy(resWords[9],"static");
-    strcpy(resWords[10],"field");
-
-    //Statements
-    strcpy(resWords[11],"let");
-    strcpy(resWords[12],"do");
-    strcpy(resWords[13],"if");
-    strcpy(resWords[14],"else");
-    strcpy(resWords[15],"while");
-    strcpy(resWords[16],"return");
-
-    //Constant values
-    strcpy(resWords[17],"true");
-    strcpy(resWords[18],"false");
-    strcpy(resWords[19],"null");
-
-    //Object reference
-    strcpy(resWords[20],"this");
-
-}
-
-int isKeyword(char* lexeme){
-    for(int i=0;i<21;i++){
-        if(strcmp(lexeme,resWords[i])==0)
-            return 1;
-    }
-    return 0;
-}
-void setUpSymbols(){
-
-    symbols[0] = '(';
-    symbols[1] = ')';
-    symbols[2] = '[';
-    symbols[3] = ']';
-    symbols[4] = '{';
-    symbols[5] = '}';
-    symbols[6] = ',';
-    symbols[7] = ';';
-    symbols[8] = ';';
-    symbols[9] = '=';
-    symbols[10] = '.';
-    symbols[11] = '+';
-    symbols[12] = '-';
-    symbols[13] = '*';
-    symbols[14] = '/';
-    symbols[15] = '&';
-    symbols[16] = '|';
-    symbols[17] = '~';
-    symbols[18] = '<';
-    symbols[19] = '>';
-
-}
-
-int isSymbol(char* lexeme){
-    for(int i=0;i<20;i++){
-        if(strcmp(lexeme,&symbols[i])==0)
-            return 1;
-    }
-    return 0;
-}
 
 
-
-//lexical elements
-
-void keyword(){
+ParserInfo type(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
-    if(isKeyword(token.lx))
-        ;
-    else
-        printf("Error: keyword expected");
+    parserInfo.tk=token;
 
-}
-
-void symbol(){
-    Token token = GetNextToken();
-    if(isSymbol(token.lx))
-        ;
-    else
-        printf("Error: symbol expected at %s:%d",token.fl,token.ln);
-
-}
-
-void type(){
-    Token token = GetNextToken();
     if(strcmp(token.lx,"int")==0 ||  strcmp(token.lx,"char")==0||  strcmp(token.lx,"boolean")==0 ||  token.tp==ID)
         ;
-    else
-        printf("Error: 'int', 'char', 'boolean' or another identifier expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=illegalType;
+        parserInfo.tk=token;
+        printf("Error: illegal type at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
+
 }
 
-void paramList(){// type identifier {, type identifier} | ε
+ParserInfo paramList(){// type identifier {, type identifier} | ε
+    ParserInfo parserInfo;
+
     Token token = PeekNextToken();
+    parserInfo.tk=token;
 
     if(strcmp(token.lx,"int")==0 ||  strcmp(token.lx,"char")==0||  strcmp(token.lx,"boolean")==0 ||  token.tp==ID) {
         token = GetNextToken();
         token = GetNextToken();
         if (token.tp == ID)
             ;
-        else
-            printf("Error: identifier expected at %s:%d", token.fl, token.ln);
-
+        else{
+            parserInfo.er=idExpected;
+            parserInfo.tk=token;
+            printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
 
         token = GetNextToken();
         if (strcmp(token.lx, ",") == 0) {
@@ -139,32 +56,46 @@ void paramList(){// type identifier {, type identifier} | ε
                 token = GetNextToken();
                 if (strcmp(token.lx, ",") == 0)
                     ;
-                else
-                    printf("Error: identifier expected at %s:%d", token.fl, token.ln);
-
+                else{
+                    parserInfo.er=idExpected;
+                    parserInfo.tk=token;
+                    printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+                    return parserInfo;
+                }
                 next_token = PeekNextToken();
 
             }
         }
     }
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 
 }
 
-void varDeclarStatement(){// var type identifier { , identifier } ;
+ParserInfo varDeclarStatement(){// var type identifier { , identifier } ;
+    ParserInfo parserInfo;
     Token token = GetNextToken();
+    parserInfo.tk=token;
     if(strcmp(token.lx,"var")==0)
         ;
-    else
-        printf("Error: 'var' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'var' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     type();
 
     token = GetNextToken();
     if(token.tp==ID)
         ;
-    else
-        printf("Error: identifier expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=idExpected;
+        parserInfo.tk=token;
+        printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     token = GetNextToken();
     if (strcmp(token.lx, ",") == 0) {
         Token next_token = PeekNextToken(); // notice the peek
@@ -172,190 +103,294 @@ void varDeclarStatement(){// var type identifier { , identifier } ;
             token = GetNextToken();
             if (strcmp(token.lx, ",") == 0)
                 ;
-            else
-                printf("Error: identifier expected at %s:%d", token.fl, token.ln);
-
+            else{
+                parserInfo.er=idExpected;
+                parserInfo.tk=token;
+                printf("Error: 'identifier' expected at %s:%d\n", token.fl, token.ln);
+                return parserInfo;
+            }
             next_token = PeekNextToken();
 
         }
     }else if(strcmp(token.lx,";")==0)
         ;
-    else
-        printf("Error: ';' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=semicolonExpected;
+        parserInfo.tk=token;
+        printf("Error: ';' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 
 }
 
+static ParserInfo expression();
+static ParserInfo expressionList();
 
-void factor(){
+ParserInfo operand(){
+    ParserInfo parserInfo;
+    Token token = GetNextToken();
+    parserInfo.tk=token;
+    if(token.tp == INT || token.tp==ID)
+        ;
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: identifier or int expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+    Token next_token = PeekNextToken();
+    if(strcmp(next_token.lx,".")==0) {
+        token = GetNextToken();
+        token = GetNextToken();
+        if(token.tp ==ID)
+            ;
+        else{
+            parserInfo.er=idExpected;
+            parserInfo.tk=token;
+            printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
+    }
+
+    next_token = PeekNextToken();
+
+    if(strcmp(next_token.lx,"[")==0){
+        token = GetNextToken();
+        expression();
+        token = GetNextToken();
+        if(strcmp(token.lx,"]")!=0){
+            parserInfo.er=closeBracketExpected;
+            parserInfo.tk=token;
+            printf("Error: ']' expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
+    }
+    else if(strcmp(next_token.lx,"(")==0){
+        token = GetNextToken();
+        expressionList();
+        token = GetNextToken();
+        if(strcmp(token.lx,")")!=0){
+            parserInfo.er=closeBracketExpected;
+            parserInfo.tk=token;
+            printf("Error: ')' expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
+
+    }
+    else if(strcmp(next_token.lx,"true")==0)
+        token = GetNextToken();
+    else if(strcmp(next_token.lx,"false")==0)
+        token = GetNextToken();
+    else if(strcmp(next_token.lx,"null")==0)
+        token = GetNextToken();
+    else if(strcmp(next_token.lx,"this")==0)
+        token = GetNextToken();
+    else if(next_token.tp == STRING)
+        token = GetNextToken();
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: value expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
+}
+
+
+
+ParserInfo factor(){
+    ParserInfo parserInfo;
     Token next_token = PeekNextToken();
     if(strcmp(next_token.lx,"-")==0 || strcmp(next_token.lx,"~")==0)
         next_token=GetNextToken();
 
     operand();
 
+    parserInfo.tk=next_token;
+    parserInfo.er=none;
+    return parserInfo;
+
 }
 
 
 
 
-void term(){
+ParserInfo term(){
+    ParserInfo parserInfo;
     factor();
     Token next_token = PeekNextToken();
 
     while(strcmp(next_token.lx,"*")==0 || strcmp(next_token.lx,"/")==0){
+        next_token=GetNextToken();
         factor();
         next_token=PeekNextToken();
     }
+    parserInfo.tk=next_token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void ArithmeticExpression(){
+
+
+ParserInfo ArithmeticExpression(){
+    ParserInfo parserInfo;
     term();
     Token next_token = PeekNextToken();
 
     while(strcmp(next_token.lx,"+")==0 || strcmp(next_token.lx,"-")==0){
+        next_token=GetNextToken();
         term();
         next_token=PeekNextToken();
     }
-
+    parserInfo.tk=next_token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void relationalExpression(){
+ParserInfo relationalExpression(){
+    ParserInfo parserInfo;
     ArithmeticExpression();
     Token next_token = PeekNextToken();
 
     while(strcmp(next_token.lx,"=")==0 || strcmp(next_token.lx,">")==0 || strcmp(next_token.lx,"<")==0){
+        next_token=GetNextToken();
         ArithmeticExpression();
         next_token=PeekNextToken();
     }
+    parserInfo.tk=next_token;
+    parserInfo.er=none;
+    return parserInfo;
+
 }
-void expression(){
+
+
+ParserInfo expression(){
+    ParserInfo parserInfo;
     relationalExpression();
     Token next_token = PeekNextToken();
     while(strcmp(next_token.lx,"&")==0 || strcmp(next_token.lx,"|")==0){
+        next_token=GetNextToken();
         relationalExpression();
         next_token=PeekNextToken();
     }
-
+    parserInfo.tk=next_token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void expressionList(){
+ParserInfo expressionList(){
     expression();
+    ParserInfo parserInfo;
     Token next_token = PeekNextToken();
 
     if(strcmp(next_token.lx,",")==0){
+        next_token=GetNextToken();
         expression();
-        next_token=PeekNextToken();
+        next_token=GetNextToken();
         while(strcmp(next_token.lx,",")==0){
             expression();
             next_token=PeekNextToken();
         }
 
     }
+
+    parserInfo.tk=next_token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void operand(){
+
+
+
+ParserInfo letStatement() {//let identifier [ [ expression ] ] = expression ;
+    ParserInfo parserInfo;
     Token token = GetNextToken();
 
-    if(token.tp == INT || token.tp==ID)
+    if (strcmp(token.lx, "let") == 0)
         ;
-    else
-        printf("Error: identifier or integer constant expected at %s:%d",token.fl,token.ln);
-
-    Token next_token = PeekNextToken();
-    if(strcmp(token.lx,".")==0) {
-        token = GetNextToken();
-        token = GetNextToken();
-        if(token.tp ==ID)
-            ;
-        else
-            printf("Error: identifier expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'let' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
     }
-
-    next_token = PeekNextToken();
-
-    if(strcmp(token.lx,"[")==0)
-        expression();
-    else if(strcmp(token.lx,"(")==0)
-        expressionList();
-    else if(strcmp(token.lx,"true")==0)
-        ;
-    else if(strcmp(token.lx,"false")==0)
-        ;
-    else if(strcmp(token.lx,"null")==0)
-        ;
-    else if(strcmp(token.lx,"this")==0)
-        ;
-    else if(token.tp == STRING)
-        ;
-    else
-        printf("Error: '[', '(', 'true', 'false', 'null', 'this' or string literal expected at %s:%d",token.fl,token.ln);
-
-}
-
-
-
-
-
-
-
-
-
-
-void letStatement() {//let identifier [ [ expression ] ] = expression ;
-
-    Token token = GetNextToken();
-
-    if (strcmp(token.lx, "let") == 0);
-    else
-        printf("Error: 'let' expected at %s:%d", token.fl, token.ln);
-
     Token next_token = PeekNextToken();
 
     if (strcmp(next_token.lx, "[") == 0){
         token = GetNextToken();
         expression();
         token = GetNextToken();
-        if(strcmp(token.lx, "[") == 0)
+        if(strcmp(token.lx, "]") == 0)
             ;
-        else
-            printf("Error: ']' expected at %s:%d",token.fl,token.ln);
-
-    }else
-        printf("Error: expression expected at %s:%d",next_token.fl,next_token.ln);
-
+        else{
+            parserInfo.er=closeBracketExpected;
+            parserInfo.tk=token;
+            printf("Error: ']' expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
+    }else if(next_token.tp ==ID)
+        next_token=GetNextToken();
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: expression expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     token = GetNextToken();
     if(strcmp(token.lx, "=") == 0)
         ;
-    else
-        printf("Error: '=' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=equalExpected;
+        parserInfo.tk=token;
+        printf("Error: '=' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     expression();
     token = GetNextToken();
     if(strcmp(token.lx, ";") == 0)
-        ;
-    else
-        printf("Error: ';' expected at %s:%d",token.fl,token.ln);
+        return parserInfo;
 
-
+    else{
+        parserInfo.er=semicolonExpected;
+        parserInfo.tk=token;
+        printf("Error: ';' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     if(token.tp==ID)
         ;
-    else
-        printf("Error: identifier expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=idExpected;
+        parserInfo.tk=token;
+        printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     token = GetNextToken();
 
     if(strcmp(token.lx,"let")==0)
         ;
-    else
-        printf("Error: 'let' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'let' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
-
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void statement(){
+ParserInfo statement(){
+    ParserInfo parserInfo;
     Token token = PeekNextToken();
     if(strcmp(token.lx,"var")==0)//varDeclarStatement
         varDeclarStatement();
@@ -369,40 +404,61 @@ void statement(){
         ;
     else if(strcmp(token.lx,"return")==0)//returnStatement
         ;
-    else
-        printf("Error: 'var', 'let', 'if', 'while', 'do' or 'return' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'var', 'let', 'if', 'while', 'do' or 'return' expected at %s:%d\n",token.fl,token.ln);
+        return parserInfo;
+    }
+
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
 
 
 
-void ifStatement(){
+ParserInfo ifStatement(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
     if(strcmp(token.lx,"if")==0)
         ;
-    else
-        printf("Error: 'if' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'if' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     token = GetNextToken();
     if(strcmp(token.lx,"(")==0)
         ;
-    else
-        printf("Error: '(' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=openParenExpected;
+        parserInfo.tk=token;
+        printf("Error: '(' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     expression();
     token = GetNextToken();
     if(strcmp(token.lx,")")==0)
         ;
-    else
-        printf("Error: ')' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=closeParenExpected;
+        parserInfo.tk=token;
+        printf("Error: ')' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     token = GetNextToken();
     if(strcmp(token.lx,"{")==0)
         ;
-    else
-        printf("Error: '{' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=openBraceExpected;
+        parserInfo.tk=token;
+        printf("Error: '{' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     Token next_token = PeekNextToken ();
     while ( strcmp(next_token.lx,"var")==0 ||
@@ -418,17 +474,25 @@ void ifStatement(){
     token = GetNextToken();
     if(strcmp(token.lx,"}")==0)
         ;
-    else
-        printf("Error: '}' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=closeBraceExpected;
+        parserInfo.tk=token;
+        printf("Error: '}' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     next_token = PeekNextToken();
     if(strcmp(next_token.lx,"else")==0){
         token = GetNextToken();
         token = GetNextToken();
         if(strcmp(token.lx,"{")==0)
             ;
-        else
-            printf("Error: '{' expected at %s:%d",token.fl,token.ln);
+        else{
+            parserInfo.er=openBraceExpected;
+            parserInfo.tk=token;
+            printf("Error: '{' expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
+
         next_token = PeekNextToken ();
         while ( strcmp(next_token.lx,"var")==0 ||
                 strcmp(next_token.lx,"if")==0 ||
@@ -443,41 +507,60 @@ void ifStatement(){
         token = GetNextToken();
         if(strcmp(token.lx,"}")==0)
             ;
-        else
-            printf("Error: '}' expected at %s:%d",token.fl,token.ln);
-
+        else{
+            parserInfo.er=closeBraceExpected;
+            parserInfo.tk=token;
+            printf("Error: '}' expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
     }
-
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
 
-void whileStatement(){
+ParserInfo whileStatement(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
     if(strcmp(token.lx,"while")==0)
         ;
-    else
-        printf("Error: 'while' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'while' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     token = GetNextToken();
     if(strcmp(token.lx,"(")==0)
         ;
-    else
-        printf("Error: '(' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=openParenExpected;
+        parserInfo.tk=token;
+        printf("Error: '(' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     expression();
     token = GetNextToken();
     if(strcmp(token.lx,")")==0)
         ;
-    else
-        printf("Error: ')' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=closeParenExpected;
+        parserInfo.tk=token;
+        printf("Error: ')' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     token = GetNextToken();
     if(strcmp(token.lx,"{")==0)
         ;
-    else
-        printf("Error: '{' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=openBraceExpected;
+        parserInfo.tk=token;
+        printf("Error: '{' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     Token next_token = PeekNextToken ();
     while ( strcmp(next_token.lx,"var")==0 ||
@@ -493,19 +576,30 @@ void whileStatement(){
     token = GetNextToken();
     if(strcmp(token.lx,"}")==0)
         ;
-    else
-        printf("Error: '}' expected at %s:%d",token.fl,token.ln);
-}
+    else{
+        parserInfo.er=closeBraceExpected;
+        parserInfo.tk=token;
+        printf("Error: '}' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;}
 
 
 
-void returnStatement(){
+ParserInfo returnStatement(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
     if(strcmp(token.lx,"return")==0)
         ;
-    else
-        printf("Error: 'return' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'return' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     token = GetNextToken();
     if(strcmp(token.lx,"-")==0 || strcmp(token.lx,"~")==0 || token.tp==INT || token.tp==ID)
         expression();
@@ -513,68 +607,103 @@ void returnStatement(){
     token = GetNextToken();
     if(strcmp(token.lx,";")==0)
         ;
-    else
-        printf("Error: ';' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=semicolonExpected;
+        parserInfo.tk=token;
+        printf("Error: ';' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
-
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void subroutineCall(){
+ParserInfo subroutineCall(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
     if(token.tp==ID)
         ;
-    else
-        printf("Error: identifier expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=idExpected;
+        parserInfo.tk=token;
+        printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     Token next_token = PeekNextToken();
     if(strcmp(next_token.lx,".")==0){
         token = GetNextToken();
         token = GetNextToken();
         if(token.tp==ID)
             ;
-        else
-            printf("Error: identifier expected at %s:%d",token.fl,token.ln);
+        else{
+            parserInfo.er=idExpected;
+            parserInfo.tk=token;
+            printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
     }
 
     token = GetNextToken();
 
     if(strcmp(token.lx,"(")==0)
         ;
-    else
-        printf("Error: '(' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=openParenExpected;
+        parserInfo.tk=token;
+        printf("Error: '(' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     expressionList();
 
     token = GetNextToken();
 
     if(strcmp(token.lx,")")==0)
         ;
-    else
-        printf("Error: ')' expected at %s:%d",token.fl,token.ln);
-
-
+    else{
+        parserInfo.er=closeParenExpected;
+        parserInfo.tk=token;
+        printf("Error: ')' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void doStatement(){
+ParserInfo doStatement(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
+    parserInfo.tk=token;
     if(strcmp(token.lx,"do")==0)
         ;
-    else
-        printf("Error: 'do' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=syntaxError;
+        parserInfo.tk=token;
+        printf("Error: 'do' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     subroutineCall();
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 
 }
 
 
 
-void subroutineBody(){
+ParserInfo subroutineBody(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
     if(strcmp(token.lx,"{")==0)
         ;
     else
-        printf("Error: '(' expected at %s:%d",token.fl,token.ln);
-
+    {
+        parserInfo.er=closeBracketExpected;
+        parserInfo.tk=token;
+        printf("Error: '{' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     Token next_token = PeekNextToken();
     while(next_token.tp!=EOFile || strcmp(token.lx,"}")==0)
         statement();
@@ -582,55 +711,83 @@ void subroutineBody(){
     token = GetNextToken();
     if(strcmp(token.lx,"}")==0)
         ;
-    else
-        printf("Error: '}' expected at %s:%d",token.fl,token.ln);}
+    else{
+        parserInfo.er=closeBracketExpected;
+        parserInfo.tk=token;
+        printf("Error: '}' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
+}
 
 
 
-void subroutineDeclar(){// (constructor | function | method) (type|void) identifier (paramList) subroutineBody
+ParserInfo subroutineDeclar(){// (constructor | function | method) (type|void) identifier (paramList) subroutineBody
+    ParserInfo parserInfo;
     Token token = GetNextToken();
-    if(strcmp(token.lx,"constructor")==0 || strcmp(token.lx,"function")==0 || strcmp(token.lx,"method")==0)
-        ;
-    else
-        printf("Error: 'constructor', 'function', 'method' expected at %s:%d",token.fl,token.ln);
-
-    token = GetNextToken();
+//    if(strcmp(token.lx,"constructor")==0 || strcmp(token.lx,"function")==0 || strcmp(token.lx,"method")==0)
+//        ;
+//    else{
+//        parserInfo.er=subroutineDeclarErr;
+//        parserInfo.tk=token;
+//        printf("Error: class member declaration must begin with static, field, constructor , function , or method expected at %s:%d\n", token.fl, token.ln);
+//        return parserInfo;
+//    }
+//    token = GetNextToken();
     if(strcmp(token.lx,"void")==0 || strcmp(token.lx,"int")==0 ||  strcmp(token.lx,"char")==0||  strcmp(token.lx,"boolean")==0 ||  token.tp==ID)
         ;
-    else
-        printf("Error: 'void', 'int', 'char', 'boolean' or another identifier expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=illegalType;
+        parserInfo.tk=token;
+        printf("Error: a type must be int, char, boolean, or identifier expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
 
     token = GetNextToken();
     if(token.tp==ID)
         ;
-    else
-        printf("Error: identifier expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=idExpected;
+        parserInfo.tk=token;
+        printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
 
     token = GetNextToken();
     if(strcmp(token.lx,"(")==0)
         ;
-    else
-        printf("Error: '(' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=openParenExpected;
+        parserInfo.tk=token;
+        printf("Error: '(' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
     paramList();
 
     token = GetNextToken();
     if(strcmp(token.lx,")")==0)
         ;
-    else
-        printf("Error: ')' expected at %s:%d",token.fl,token.ln);
-
+    else{
+        parserInfo.er=closeParenExpected;
+        parserInfo.tk=token;
+        printf("Error: ')' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
     subroutineBody();
-
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 
 }
 
 
-void memberDeclar(){
+ParserInfo memberDeclar(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
 
     if(strcmp(token.lx,"static")==0 ||  strcmp(token.lx,"field")==0){
@@ -644,44 +801,81 @@ void memberDeclar(){
                     token= GetNextToken();
                     if(strcmp(token.lx,",")==0)
                         ;
-                    else
-                        printf("Error: identifier expected at %s:%d", token.fl, token.ln);
+                    else{
+                        parserInfo.er=idExpected;
+                        parserInfo.tk=token;
+                        printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+                        return parserInfo;
+                    }
 
                     next_token = PeekNextToken();
 
                 }
             }else if(strcmp(token.lx, ";") == 0)
                 ;
-            else
-                printf("Error: ';' expected at %s:%d", token.fl, token.ln);
-
-        }else
-            printf("Error: identifier expected at %s:%d",token.fl,token.ln);
+            else{
+                parserInfo.er=semicolonExpected;
+                parserInfo.tk=token;
+                printf("Error: ';' expected at %s:%d\n", token.fl, token.ln);
+                return parserInfo;
+            }
+        }else{
+            parserInfo.er=idExpected;
+            parserInfo.tk=token;
+            printf("Error: identifier expected at %s:%d\n", token.fl, token.ln);
+            return parserInfo;
+        }
 
 
     }else if(strcmp(token.lx,"constructor")==0 || strcmp(token.lx,"function")==0 || strcmp(token.lx,"method")==0)
         subroutineDeclar();
-    else
-        printf("Error: 'constructor', 'function', 'method','static' or 'field' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=classVarErr;
+        parserInfo.tk=token;
+        printf("Error: class member declaration must begin with static, field, constructor , function , or method at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
 
-
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
-void classDeclar(){
+ParserInfo classDeclar(){
+    ParserInfo parserInfo;
     Token token = GetNextToken();
+
     if(strcmp(token.lx,"class")==0)
         ;
-    else
-        printf("Error: 'class' expected at %s:%d",token.fl,token.ln);
+    else {
+        parserInfo.er=classExpected;
+        parserInfo.tk=token;
+        printf("Error: 'class' expected at %s:%d\n", token.fl, token.ln);
+        return parserInfo;
+    }
+
+    token = GetNextToken();
+    if(token.tp==ID)
+        ;
+    else{
+        parserInfo.er=idExpected;
+        parserInfo.tk=token;
+        printf("Error: identifier expected at %s:%d\n",token.fl,token.ln);
+        return parserInfo;
+    }
 
     token = GetNextToken();
     if(strcmp(token.lx,"{")==0)
         ;
-    else
-        printf("Error: '{' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=openBraceExpected;
+        parserInfo.tk=token;
+        printf("Error: '{' expected at %s:%d\n",token.fl,token.ln);
+        return parserInfo;
+    }
 
     Token next_token = PeekNextToken (); // notice the peek
-    while (strcmp(next_token.lx,"}")==0) // notice the while
+    while (strcmp(next_token.lx,"}")!=0) // notice the while
     {
         memberDeclar();
         next_token = PeekNextToken ();
@@ -690,11 +884,16 @@ void classDeclar(){
     token = GetNextToken();
     if(strcmp(token.lx,"}")==0)
         ;
-    else
-        printf("Error: '}' expected at %s:%d",token.fl,token.ln);
+    else{
+        parserInfo.er=closeBraceExpected;
+        parserInfo.tk=token;
+        printf("Error: '}' expected at %s:%d\n",token.fl,token.ln);
+        return parserInfo;
+    }
 
-
-
+    parserInfo.tk=token;
+    parserInfo.er=none;
+    return parserInfo;
 }
 
 
@@ -714,6 +913,7 @@ ParserInfo Parse ()
 {
 	ParserInfo pi;
 
+	pi=classDeclar();
 	// implement the function
 
 
@@ -730,7 +930,9 @@ int StopParser ()
 #ifndef TEST_PARSER
 int main ()
 {
-
+    InitParser("SquareGame.jack");
+    Parse();
+    StopParser();
 	return 1;
 }
 #endif
